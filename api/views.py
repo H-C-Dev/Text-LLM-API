@@ -1,7 +1,19 @@
-from django.http import HttpResponse
-import boto3
+import json
+from django.http import JsonResponse
+from django.conf import settings
+from api.bedrock_request_body_config import request_body
+from api.bedrock_client import get_bedrock_client
 
 
-# Create your views here.
 def index(request):
-    return HttpResponse("Hello, world. You're at the api index.")
+    client = get_bedrock_client()
+    resp = client.invoke_model(
+        modelId = settings.BEDROCK_MODEL,
+        contentType = "application/json",
+        accept = "application/json",
+        body=json.dumps(request_body)
+    )
+    bytes = resp['body'].read()
+    summary = json.loads(bytes)
+    output = summary['results'][0]['outputText']
+    return JsonResponse({'outputText': output})
