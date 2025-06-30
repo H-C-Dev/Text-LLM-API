@@ -1,7 +1,8 @@
-from django.http import HttpResponse
-import boto3
+from django.views.decorators.csrf import csrf_exempt
+from api.request_handler import RequestHandler
 
-
-# Create your views here.
+@csrf_exempt
 def index(request):
-    return HttpResponse("Hello, world. You're at the api index.")
+    handleRequest = RequestHandler()
+    return handleRequest.request_handler(request)
+
