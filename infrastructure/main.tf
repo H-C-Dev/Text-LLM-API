@@ -80,4 +80,17 @@ resource "aws_instance" "text_sum" {
   vpc_security_group_ids = [aws_security_group.sg.id]
   key_name               = var.key_name
   associate_public_ip_address = true
+
+  user_data = <<-EOF
+              #!/bin/bash
+              sudo apt-get update -y
+              sudo apt-get update -y
+              sudo ufw app list
+              sudo ufw allow OpenSSH
+              sudo ufw allow 80
+              sudo ufw --force enable
+              sudo ufw status
+              sudo apt install python3
+              sudo apt install python3-pip -y
+              EOF
 }
