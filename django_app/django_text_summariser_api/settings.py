@@ -33,7 +33,7 @@ SECRET_KEY = 'django-insecure-m1erh9k@mvo1t6@8+kxw!r^p#b8t27_54-c&cm(2p-b6*yfv!2
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-# to make sure it works in prod env
+# to make sure it works inside the prod env, plus I have no money for elastic ip address or domain name
 ALLOWED_HOSTS = ['*']
 
 
