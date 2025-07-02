@@ -4,7 +4,7 @@ variable "instance_type" {
 
 variable "ami_id" {
     type = string
-    description = "ubuntu free tier ami: ami-051fd0ca694aa2379"
+    description = "ubuntu free tier ami: ami-044415bb13eee2391"
 }
 
 variable "aws_profile" {
