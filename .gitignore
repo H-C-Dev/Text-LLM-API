@@ -2,3 +2,14 @@ venv
 db.sqlite3
 .env
 *__pycache__
+
+#Terraform
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+.DS_Store
+.terraform/
+.terraform.lock.hcl
