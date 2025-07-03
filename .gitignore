@@ -8,7 +8,7 @@ db.sqlite3
 *.tfstate.*
 crash.log
 crash.*.log
-*.tfvars
+# *.tfvars
 *.tfvars.json
 .DS_Store
 .terraform/
