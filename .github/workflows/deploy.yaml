@@ -2,9 +2,9 @@ name: Deploy Text Sum Django App to EC2 Workflow
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 permissions:
