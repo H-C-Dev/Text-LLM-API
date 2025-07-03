@@ -9,7 +9,7 @@ terraform {
 
 provider "aws" {
     region = var.region
-    profile = var.aws_profile
+    # profile = var.aws_profile
 }
 
 locals {
@@ -88,6 +88,7 @@ resource "aws_instance" "text_sum" {
   vpc_security_group_ids = [aws_security_group.sg.id]
   key_name               = var.key_name
   associate_public_ip_address = true
+  iam_instance_profile        = aws_iam_instance_profile.profile.name
 
   user_data = <<-EOF
               #!/bin/bash
@@ -111,4 +112,30 @@ resource "aws_instance" "text_sum" {
               sudo apt-get update -y
               sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
               EOF
+}
+
+
+resource "aws_iam_role" "ec2_role" {
+  name = "role_to_access_bedrock"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action    = "sts:AssumeRole",
+      Effect    = "Allow",
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "attach_policy" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonBedrockFullAccess"  
+}
+
+resource "aws_iam_instance_profile" "profile" {
+  name = "ec2-profile"
+  role = aws_iam_role.ec2_role.name
 }

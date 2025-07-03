@@ -1,0 +1,101 @@
+name: Deploy Text Sum Django App to EC2 Workflow
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CONFIG_DIRECTORY: "./infrastructure"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout H-C-Dev/django-text-summariser-api
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform init and apply
+        working-directory: ${{ env.CONFIG_DIRECTORY }}
+        run: |
+          terraform init
+          terraform apply -auto-approve
+          echo "IP_ADDRESS=$(terraform output -raw instance_public_ip)" >> $GITHUB_ENV
+
+      - name: Show Terraform Output
+        working-directory: ${{ env.CONFIG_DIRECTORY }}
+        run: |
+          echo "EC2 Instance IP Address"
+          echo ${{ env.IP_ADDRESS }}
+
+      - name: Set up SSH key
+        env:
+          PEM_FILE: ${{ secrets.PEM_FILE }}
+          KEY_NAME: ${{ secrets.KEY_NAME }}
+        run: |
+          mkdir -p ./keys
+          echo "$PEM_FILE" | base64 -d > ./keys/$KEY_NAME.pem
+          chmod 400 ./keys/$KEY_NAME.pem
+
+      - name: Build Docker Image
+        working-directory: ./django_app
+        run: |
+          docker buildx build --platform linux/amd64 --target production -t text-sum-prod .
+
+      - name: Save Docker Image to file
+        run: |
+          docker save -o text-sum-prod.tar text-sum-prod
+
+      - name: Install SSH client
+        run: sudo apt-get update && sudo apt-get install -y openssh-client
+
+      - name: Copy Docker image to EC2
+        run: |
+          scp -i ./keys/${{ secrets.KEY_NAME }}.pem -o StrictHostKeyChecking=no \
+            text-sum-prod.tar ubuntu@${{ env.IP_ADDRESS }}:/home/ubuntu/
+
+      - name: Load and Run Docker Image on EC2
+        run: |
+          ssh -i ./keys/${{ secrets.KEY_NAME }}.pem -o StrictHostKeyChecking=no ubuntu@${{ env.IP_ADDRESS }} << 'EOF'
+            echo "Connected to VM running on $(hostname) via SSH"
+            for attempt in {1..5}; do
+              if command -v docker >/dev/null 2>&1; then
+                echo "Docker is ready on attempt $attempt"
+                break
+              else
+                echo "Docker not ready (attempt $attempt), retrying in 60 seconds"
+                sleep 60
+              fi
+            done
+            if ! command -v docker >/dev/null 2>&1; then
+              echo "Workflow failed: Docker is still not available after 4 attempts." >&2
+              exit 1
+            fi
+            sudo docker load -i text-sum-prod.tar
+            sudo docker run -d -p 80:8000  -e AWS_DEFAULT_REGION=eu-west-2 -e BEDROCK_MODEL=amazon.titan-text-lite-v1 text-sum-prod:latest
+          EOF
+
+      - name: Wait before destroying infrastructure
+        if: always()
+        run: |
+          echo "Waiting 5 minutes before running Terraform Destroy."
+          sleep 300
+          terraform destroy -auto-approve
+        working-directory: ${{ env.CONFIG_DIRECTORY }}
