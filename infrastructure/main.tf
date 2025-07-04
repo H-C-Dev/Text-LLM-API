@@ -33,7 +33,7 @@ resource "aws_subnet" "public_subnet" {
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.vpc.id
   tags = {
-    Name = var.project_name
+    Name = "${var.project_name}-${local.suffix}"
   }
 }
 
@@ -116,7 +116,7 @@ resource "aws_instance" "text_sum" {
 
 
 resource "aws_iam_role" "ec2_role" {
-  name = "role_to_access_bedrock"
+  name = "role_to_access_bedrock-${local.suffix}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -136,6 +136,6 @@ resource "aws_iam_role_policy_attachment" "attach_policy" {
 }
 
 resource "aws_iam_instance_profile" "profile" {
-  name = "ec2-profile"
+  name = "ec2-profile-${local.suffix}"
   role = aws_iam_role.ec2_role.name
 }
