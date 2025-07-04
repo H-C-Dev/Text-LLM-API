@@ -14,8 +14,8 @@ class RequestHandler:
         self.__client = boto3.client(
             "bedrock-runtime",
             region_name=settings.REGION,
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            # aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            # aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
         ) 
     def __parse_resp(self, raw_resp):
         raw_resp = raw_resp['body'].read()
