@@ -68,6 +68,8 @@ jobs:
 
       - name: Copy Docker image to EC2
         run: |
+          echo "Wait for 30 seconds before scp"
+          sleep 30
           scp -i ./keys/${{ secrets.KEY_NAME }}.pem -o StrictHostKeyChecking=no \
             text-sum-prod.tar ubuntu@${{ env.IP_ADDRESS }}:/home/ubuntu/
 
@@ -76,20 +78,28 @@ jobs:
           ssh -i ./keys/${{ secrets.KEY_NAME }}.pem -o StrictHostKeyChecking=no ubuntu@${{ env.IP_ADDRESS }} << 'EOF'
             echo "Connected to VM running on $(hostname) via SSH"
             for attempt in {1..5}; do
-              if command -v docker >/dev/null 2>&1; then
-                echo "Docker is ready on attempt $attempt"
-                break
+              if ! command -v docker >/dev/null 2>&1; then
+                echo "Attempt [$attempt]: Docker file not found, retrying in 30 seconds"
+              elif ! sudo docker ps >/dev/null 2>&1; then
+                echo "Attempt [$attempt]: Docker not available, retrying in 30 seconds"
               else
-                echo "Docker not ready (attempt $attempt), retrying in 60 seconds"
-                sleep 60
+                echo "Attempt [$attempt]: Docker is ready"
+                break
               fi
+              sleep 30
             done
-            if ! command -v docker >/dev/null 2>&1; then
-              echo "Workflow failed: Docker is still not available after 4 attempts." >&2
+            
+            if ! command -v docker >/dev/null 2>&1 || ! sudo docker ps >/dev/null 2>&1; then
+              echo "Workflow failed: Docker is still not available after 5 attempts" >&2
               exit 1
             fi
+
             sudo docker load -i text-sum-prod.tar
-            sudo docker run -d -p 80:8000  -e AWS_DEFAULT_REGION=eu-west-2 -e BEDROCK_MODEL=amazon.titan-text-lite-v1 text-sum-prod:latest
+            sudo docker run -d \
+              -p 80:8000 \
+              -e AWS_DEFAULT_REGION=eu-west-2 \
+              -e BEDROCK_MODEL=amazon.titan-text-lite-v1 \
+              text-sum-prod:latest
           EOF
 
       - name: Wait before destroying infrastructure
